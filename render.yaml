@@ -5,6 +5,7 @@ services:
     region: singapore
     plan: free
     buildCommand: |
+      pip install --upgrade pip
       pip install -r requirements.txt
       python data/generate_data.py
       python src/preprocess.py
