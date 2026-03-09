@@ -404,19 +404,32 @@
     let approvalChart = null;
 
     async function loadDashboard() {
-      try {
-        const res  = await fetch('/api/dashboard');
+    try {
+        const res = await fetch('/api/dashboard');
+
+        if (res.status === 503) {
+            document.getElementById('dashboard-content').innerHTML = `
+                <div class="loading-state" style="color:var(--warn)">
+                    ⏳ Model is still warming up. Please wait 2-3 minutes and refresh.
+                    <br/><br/>
+                    <button class="refresh-btn" onclick="loadDashboard()" style="margin-top:1rem">↻ Try Again</button>
+                </div>
+            `;
+            return;
+        }
+
         if (!res.ok) throw new Error('Failed to load dashboard');
         const data = await res.json();
         renderDashboard(data);
-      } catch (err) {
+
+    } catch (err) {
         document.getElementById('dashboard-content').innerHTML = `
-          <div class="loading-state" style="color:var(--danger)">
-            Failed to load dashboard: ${err.message}
-          </div>
+            <div class="loading-state" style="color:var(--danger)">
+                Failed to load dashboard: ${err.message}
+            </div>
         `;
-      }
     }
+}
 
     function renderDashboard(d) {
       const ov      = d.overview;
@@ -644,16 +657,7 @@
         </div>
       `).join('');
     }
-    if (res.status === 503) {
-    document.getElementById('dashboard-content').innerHTML = `
-        <div class="loading-state" style="color:var(--warn)">
-            ⏳ Model is still warming up. Please wait 2-3 minutes and refresh.
-            <br/><br/>
-            <button class="refresh-btn" onclick="loadDashboard()" style="margin-top:1rem">↻ Try Again</button>
-        </div>
-    `;
-    return;
-}
+    
 
     // Load on page open
     loadDashboard();
