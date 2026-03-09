@@ -8,13 +8,13 @@ services:
       pip install --upgrade pip
       pip install numpy==1.26.4
       pip install -r requirements.txt
-      python data/generate_data.py
-      python src/preprocess.py
-      python src/train.py
-      python src/evaluate.py
-      python src/explain.py
-      python src/fairness.py
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+      cd /opt/render/project/src && python data/generate_data.py
+      cd /opt/render/project/src && python src/preprocess.py
+      cd /opt/render/project/src && python src/train.py
+      cd /opt/render/project/src && python src/evaluate.py
+      cd /opt/render/project/src && python src/explain.py
+      cd /opt/render/project/src && python src/fairness.py
+    startCommand: cd /opt/render/project/src && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DEBUG
         value: false

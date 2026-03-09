@@ -12,7 +12,9 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from dependencies import set_artifacts
-from routers import health, predict, simulate, dashboard        # only import what exists for now
+from routers import health, predict, simulate, dashboard    
+from pydantic import BaseModel
+BaseModel.model_config = {"protected_namespaces": ()}     # only import what exists for now
 
 artifacts = {}
 

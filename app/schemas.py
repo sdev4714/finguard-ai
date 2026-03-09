@@ -150,3 +150,12 @@ class DashboardResponse(BaseModel):
     avg_risk_score:     float
     fairness_summary:   list[FairnessMetric]
     model_info:         dict
+
+# Fix Pydantic protected namespace warning
+class DashboardResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    total_applications: int
+    approval_rate:      float
+    avg_risk_score:     float
+    fairness_summary:   list[FairnessMetric]
+    model_info:         dict
