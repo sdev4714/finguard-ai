@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FinGuard AI — What-If Simulator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0e1a;
+      --surface: #111827;
+      --border:  #1e2d40;
+      --accent:  #00d4aa;
+      --accent2: #0088ff;
+      --danger:  #ff4d6d;
+      --warn:    #f59e0b;
+      --text:    #e8edf5;
+      --muted:   #6b7a99;
+      --card:    #131c2e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 500px; height: 500px; background: rgba(0,212,170,0.06); top: -100px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: rgba(0,136,255,0.05); bottom: 100px; left: -100px; }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 1.2rem 2rem;
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; }
+    .logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--accent); }
+    .nav-links a.active { color: var(--accent); }
+
+    .page {
+      position: relative; z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 7rem 2rem 4rem;
+    }
+
+    .page-header { margin-bottom: 2.5rem; animation: fadeDown 0.5s ease both; }
+
+    .page-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(0,136,255,0.1);
+      border: 1px solid rgba(0,136,255,0.3);
+      color: var(--accent2);
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem; font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-sub { font-size: 0.8rem; color: var(--muted); line-height: 1.7; }
+
+    /* ── Layout ── */
+    .sim-layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    /* ── Form Panel ── */
+    .form-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.8rem;
+      position: sticky;
+      top: 5.5rem;
+      animation: fadeUp 0.5s 0.1s ease both;
+    }
+
+    .form-panel::before {
+      content: '';
+      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem; font-weight: 700;
+      margin-bottom: 1.5rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 3px; height: 14px;
+      background: var(--accent2);
+      border-radius: 999px;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+
+    label {
+      display: block;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    input, select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      padding: 0.6rem 0.85rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+      appearance: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(0,136,255,0.1);
+    }
+
+    .range-header { display: flex; justify-content: space-between; margin-bottom: 0.4rem; }
+    .range-val { font-size: 0.78rem; color: var(--accent2); }
+
+    input[type="range"] {
+      padding: 0; height: 4px;
+      background: var(--border);
+      border: none; border-radius: 999px;
+      cursor: pointer; accent-color: var(--accent2);
+    }
+
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+
+    .run-btn {
+      width: 100%; margin-top: 1.2rem;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      border: none; border-radius: 10px;
+      color: #0a0e1a;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.82rem; font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.85rem;
+      text-transform: uppercase;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .run-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .run-btn.loading { opacity: 0.6; pointer-events: none; }
+
+    /* ── Results Panel ── */
+    .results-panel { animation: fadeUp 0.5s 0.2s ease both; }
+
+    .placeholder {
+      background: var(--card);
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .placeholder-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; }
+    .placeholder-text { font-size: 0.8rem; line-height: 1.7; }
+
+    /* ── Comparison Cards ── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .compare-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      transition: border-color 0.3s;
+    }
+
+    .compare-card.approved { border-color: rgba(0,212,170,0.4); }
+    .compare-card.rejected { border-color: rgba(255,77,109,0.4); }
+
+    .compare-card-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+    }
+
+    .compare-decision {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.3rem; font-weight: 800;
+      margin-bottom: 1rem;
+    }
+
+    .compare-decision.approved { color: var(--accent); }
+    .compare-decision.rejected { color: var(--danger); }
+
+    .compare-metrics { display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .compare-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+    }
+
+    .compare-metric-label { color: var(--muted); }
+    .compare-metric-val { font-weight: 500; }
+
+    .mini-bar-bg {
+      height: 3px;
+      background: var(--border);
+      border-radius: 999px;
+      margin-top: 0.25rem;
+      overflow: hidden;
+    }
+
+    .mini-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--accent2);
+      transition: width 1s ease;
+    }
+
+    /* ── Delta Banner ── */
+    .delta-banner {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .delta-item { display: flex; flex-direction: column; gap: 0.3rem; }
+
+    .delta-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .delta-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem; font-weight: 700;
+    }
+
+    .delta-val.improved { color: var(--accent); }
+    .delta-val.worsened { color: var(--danger); }
+    .delta-val.neutral  { color: var(--warn); }
+
+    .delta-summary {
+      flex: 1;
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.7;
+      padding-left: 1.5rem;
+      border-left: 1px solid var(--border);
+    }
+
+    /* ── SHAP comparison ── */
+    .shap-compare {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .shap-compare-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem; font-weight: 700;
+      margin-bottom: 1.2rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    .shap-compare-title::before {
+      content: '';
+      width: 3px; height: 14px;
+      background: var(--accent);
+      border-radius: 999px;
+    }
+
+    .shap-row { margin-bottom: 0.8rem; }
+
+    .shap-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .shap-feature { color: var(--text); }
+    .shap-vals { display: flex; gap: 0.8rem; }
+    .shap-orig { color: var(--muted); }
+    .shap-mod  { font-weight: 500; }
+
+    .shap-bar-bg {
+      height: 4px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .shap-bar-orig {
+      position: absolute; top: 0; left: 0; height: 100%;
+      background: rgba(107,122,153,0.5);
+      border-radius: 999px;
+      transition: width 1s ease;
+    }
+
+    .shap-bar-mod {
+      position: absolute; top: 0; left: 0; height: 100%;
+      border-radius: 999px;
+      transition: width 1s ease;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-16px);} to {opacity:1;transform:translateY(0);}}
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(16px); } to {opacity:1;transform:translateY(0);}}
+    @keyframes spin     { to { transform: rotate(360deg); } }
+
+    .spinner {
+      display: inline-block; width:13px; height:13px;
+      border: 2px solid rgba(10,14,26,0.3);
+      border-top-color: #0a0e1a;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 0.4rem;
+    }
+
+    @media (max-width: 860px) {
+      .sim-layout { grid-template-columns: 1fr; }
+      .form-panel { position: static; }
+      .compare-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav>
+    <div class="logo">Fin<span>Guard</span> AI</div>
+    <div class="nav-links">
+      <a href="/">Apply</a>
+      <a href="/simulator" class="active">Simulator</a>
+      <a href="/dashboard">Dashboard</a>
+    </div>
+  </nav>
+
+  <div class="page">
+
+    <div class="page-header">
+      <div class="page-badge">⚡ What-If Analysis</div>
+      <h1 class="page-title">Loan Outcome Simulator</h1>
+      <p class="page-sub">
+        Adjust applicant parameters and see how each change impacts the approval decision in real time.
+        Compare original vs modified side by side with full SHAP analysis.
+      </p>
+    </div>
+
+    <div class="sim-layout">
+
+      <!-- Left: Form -->
+      <div class="form-panel">
+        <div class="panel-title">Base Application</div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Age</label>
+            <input type="number" id="age" value="32" min="18" max="75"/>
+          </div>
+          <div class="form-group">
+            <label>Dependents</label>
+            <input type="number" id="dependents" value="1" min="0" max="10"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Gender</label>
+          <select id="gender">
+            <option>Male</option>
+            <option>Female</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Education</label>
+          <select id="education">
+            <option>Graduate</option>
+            <option>Not Graduate</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Employment</label>
+          <select id="employment_type">
+            <option>Salaried</option>
+            <option>Self-Employed</option>
+            <option>Business</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Property Area</label>
+          <select id="property_area">
+            <option>Urban</option>
+            <option>Semiurban</option>
+            <option>Rural</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Monthly Income (₹)</label>
+          <input type="number" id="income" value="75000" min="0"/>
+        </div>
+
+        <div class="form-group">
+          <label>Co-Applicant Income (₹)</label>
+          <input type="number" id="co_applicant_income" value="0" min="0"/>
+        </div>
+
+        <div class="form-group">
+          <label>Loan Amount (₹)</label>
+          <input type="number" id="loan_amount" value="500000" min="1000"/>
+        </div>
+
+        <div class="form-group">
+          <label>Loan Term (months)</label>
+          <select id="loan_term">
+            <option value="12">12</option>
+            <option value="24">24</option>
+            <option value="36">36</option>
+            <option value="60">60</option>
+            <option value="84">84</option>
+            <option value="120" selected>120</option>
+            <option value="180">180</option>
+            <option value="240">240</option>
+            <option value="360">360</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Existing Loans</label>
+          <input type="number" id="existing_loans" value="1" min="0" max="10"/>
+        </div>
+
+        <!-- Credit Score Slider -->
+        <div class="form-group">
+          <div class="range-header">
+            <label>Credit Score</label>
+            <span class="range-val" id="cs_val">650</span>
+          </div>
+          <input type="range" id="credit_score" min="300" max="900" value="650"
+            oninput="document.getElementById('cs_val').textContent=this.value"/>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:1.2rem 0"/>
+
+        <div class="panel-title" style="margin-bottom:1rem">What-If Overrides</div>
+        <p style="font-size:0.7rem;color:var(--muted);margin-bottom:1rem;line-height:1.6">
+          Select a field to override and enter the new value. Leave blank to use base value.
+        </p>
+
+        <div id="overrides-list">
+          <div class="override-row" style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.6rem">
+            <select class="override-field" style="font-size:0.72rem">
+              <option value="">— field —</option>
+              <option value="income">income</option>
+              <option value="credit_score">credit_score</option>
+              <option value="loan_amount">loan_amount</option>
+              <option value="co_applicant_income">co_applicant_income</option>
+              <option value="existing_loans">existing_loans</option>
+              <option value="dependents">dependents</option>
+              <option value="age">age</option>
+              <option value="loan_term">loan_term</option>
+            </select>
+            <input class="override-val" type="number" placeholder="new value" style="font-size:0.72rem"/>
+          </div>
+        </div>
+
+        <button onclick="addOverride()" style="
+          background:transparent;border:1px dashed var(--border);
+          color:var(--muted);border-radius:8px;padding:0.5rem 1rem;
+          cursor:pointer;font-size:0.7rem;width:100%;margin-bottom:0.5rem;
+          font-family:'DM Mono',monospace;transition:border-color 0.2s,color 0.2s;
+        " onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'"
+           onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          + Add Another Override
+        </button>
+
+        <button class="run-btn" id="run-btn" onclick="runSimulation()">
+          Run Simulation →
+        </button>
+      </div>
+
+      <!-- Right: Results -->
+      <div class="results-panel" id="results-panel">
+        <div class="placeholder">
+          <div class="placeholder-icon">⚡</div>
+          <div class="placeholder-text">
+            Fill in the base application and set your what-if overrides,<br/>
+            then click <strong style="color:var(--text)">Run Simulation</strong> to see the comparison.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function addOverride() {
+      const list = document.getElementById('overrides-list');
+      const row  = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.6rem';
+      row.innerHTML = `
+        <select class="override-field" style="font-size:0.72rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.85rem;width:100%">
+          <option value="">— field —</option>
+          <option value="income">income</option>
+          <option value="credit_score">credit_score</option>
+          <option value="loan_amount">loan_amount</option>
+          <option value="co_applicant_income">co_applicant_income</option>
+          <option value="existing_loans">existing_loans</option>
+          <option value="dependents">dependents</option>
+          <option value="age">age</option>
+          <option value="loan_term">loan_term</option>
+        </select>
+        <input class="override-val" type="number" placeholder="new value"
+          style="font-size:0.72rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.6rem 0.85rem;width:100%"/>
+      `;
+      list.appendChild(row);
+    }
+
+    function getBase() {
+      return {
+        age:                 parseInt(document.getElementById('age').value),
+        gender:              document.getElementById('gender').value,
+        education:           document.getElementById('education').value,
+        employment_type:     document.getElementById('employment_type').value,
+        income:              parseFloat(document.getElementById('income').value),
+        co_applicant_income: parseFloat(document.getElementById('co_applicant_income').value) || 0,
+        loan_amount:         parseFloat(document.getElementById('loan_amount').value),
+        loan_term:           parseInt(document.getElementById('loan_term').value),
+        credit_score:        parseInt(document.getElementById('credit_score').value),
+        existing_loans:      parseInt(document.getElementById('existing_loans').value) || 0,
+        property_area:       document.getElementById('property_area').value,
+        dependents:          parseInt(document.getElementById('dependents').value) || 0,
+      };
+    }
+
+    function getOverrides() {
+      const overrides = {};
+      const fields = document.querySelectorAll('.override-field');
+      const vals   = document.querySelectorAll('.override-val');
+      fields.forEach((f, i) => {
+        if (f.value && vals[i].value !== '') {
+          overrides[f.value] = parseFloat(vals[i].value);
+        }
+      });
+      return overrides;
+    }
+
+    async function runSimulation() {
+      const btn       = document.getElementById('run-btn');
+      const panel     = document.getElementById('results-panel');
+      const base      = getBase();
+      const overrides = getOverrides();
+
+      if (Object.keys(overrides).length === 0) {
+        panel.innerHTML = `<div class="placeholder"><div class="placeholder-text" style="color:var(--danger)">Please add at least one override field to simulate.</div></div>`;
+        return;
+      }
+
+      btn.innerHTML = '<span class="spinner"></span>Simulating...';
+      btn.classList.add('loading');
+
+      try {
+        const res = await fetch('/api/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base_application: base, overrides })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Simulation failed');
+        }
+
+        const data = await res.json();
+        renderResults(data);
+
+      } catch (err) {
+        panel.innerHTML = `<div class="placeholder"><div class="placeholder-text" style="color:var(--danger)">Error: ${err.message}</div></div>`;
+      } finally {
+        btn.innerHTML = 'Run Simulation →';
+        btn.classList.remove('loading');
+      }
+    }
+
+    function renderResults(d) {
+      const orig = d.original;
+      const mod  = d.modified;
+      const delta = d.delta;
+
+      const riskColor = (score) =>
+        score < 40 ? 'var(--accent)' : score < 70 ? 'var(--warn)' : 'var(--danger)';
+
+      const deltaClass = delta.risk_direction === 'improved' ? 'improved' :
+                         delta.risk_direction === 'worsened' ? 'worsened' : 'neutral';
+
+      const overrideList = Object.entries(d.overrides)
+        .map(([k,v]) => `<span style="color:var(--accent2)">${k}</span> → <strong>${v}</strong>`)
+        .join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+
+      document.getElementById('results-panel').innerHTML = `
+
+        <!-- Delta Banner -->
+        <div class="delta-banner">
+          <div class="delta-item">
+            <div class="delta-label">Risk Δ</div>
+            <div class="delta-val ${deltaClass}">
+              ${delta.risk_score > 0 ? '+' : ''}${delta.risk_score}
+            </div>
+          </div>
+          <div class="delta-item">
+            <div class="delta-label">Confidence Δ</div>
+            <div class="delta-val ${delta.confidence > 0 ? 'improved' : 'worsened'}">
+              ${delta.confidence > 0 ? '+' : ''}${(delta.confidence * 100).toFixed(1)}%
+            </div>
+          </div>
+          <div class="delta-item">
+            <div class="delta-label">Decision Flipped</div>
+            <div class="delta-val ${delta.approval_changed ? 'improved' : 'neutral'}">
+              ${delta.approval_changed ? '⚡ Yes' : '— No'}
+            </div>
+          </div>
+          <div class="delta-summary">
+            <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Overrides Applied</div>
+            <div style="margin-bottom:0.5rem;font-size:0.72rem">${overrideList}</div>
+            <div style="color:var(--text)">${delta.summary}</div>
+          </div>
+        </div>
+
+        <!-- Compare Cards -->
+        <div class="compare-grid">
+          ${renderCompareCard('Original', orig)}
+          ${renderCompareCard('Modified', mod)}
+        </div>
+
+        <!-- SHAP Comparison -->
+        <div class="shap-compare" id="shap-compare"></div>
+      `;
+
+      renderShapComparison(orig.shap_data, mod.shap_data);
+
+      // Animate mini bars
+      setTimeout(() => {
+        document.querySelectorAll('.mini-bar-fill').forEach(el => {
+          el.style.width = el.dataset.pct + '%';
+        });
+        document.querySelectorAll('.shap-bar-orig, .shap-bar-mod').forEach(el => {
+          el.style.width = el.dataset.pct + '%';
+        });
+      }, 100);
+    }
+
+    function renderCompareCard(label, result) {
+      const approved   = result.approved;
+      const risk       = result.risk_score;
+      const conf       = (result.confidence * 100).toFixed(1);
+      const riskPct    = risk;
+      const confPct    = result.confidence * 100;
+      const riskColor  = risk < 40 ? 'var(--accent)' : risk < 70 ? 'var(--warn)' : 'var(--danger)';
+
+      return `
+        <div class="compare-card ${approved ? 'approved' : 'rejected'}">
+          <div class="compare-card-label">${label}</div>
+          <div class="compare-decision ${approved ? 'approved' : 'rejected'}">
+            ${approved ? '✅ Approved' : '❌ Rejected'}
+          </div>
+          <div class="compare-metrics">
+            <div>
+              <div class="compare-metric">
+                <span class="compare-metric-label">Risk Score</span>
+                <span class="compare-metric-val" style="color:${riskColor}">${risk}</span>
+              </div>
+              <div class="mini-bar-bg">
+                <div class="mini-bar-fill" style="width:0%;background:${riskColor}" data-pct="${riskPct}"></div>
+              </div>
+            </div>
+            <div>
+              <div class="compare-metric">
+                <span class="compare-metric-label">Confidence</span>
+                <span class="compare-metric-val" style="color:var(--accent2)">${conf}%</span>
+              </div>
+              <div class="mini-bar-bg">
+                <div class="mini-bar-fill" style="width:0%" data-pct="${confPct}"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderShapComparison(origShap, modShap) {
+      const container = document.getElementById('shap-compare');
+      if (!origShap || !modShap) return;
+
+      const maxVal = Math.max(
+        ...origShap.shap_values.map(Math.abs),
+        ...modShap.shap_values.map(Math.abs)
+      );
+
+      let html = `<div class="shap-compare-title">SHAP Factor Comparison</div>`;
+
+      origShap.features.forEach((feat, i) => {
+        const ov = origShap.shap_values[i];
+        const mv = modShap.shap_values[i] !== undefined ? modShap.shap_values[i] : ov;
+        const changed = Math.abs(mv - ov) > 0.001;
+        const origPct = Math.abs(ov) / maxVal * 100;
+        const modPct  = Math.abs(mv) / maxVal * 100;
+        const modColor = mv > 0 ? 'var(--accent)' : 'var(--danger)';
+
+        html += `
+          <div class="shap-row">
+            <div class="shap-meta">
+              <span class="shap-feature" style="${changed ? 'color:var(--accent2)' : ''}">${feat.replace(/_/g,' ')} ${changed ? '↗' : ''}</span>
+              <div class="shap-vals">
+                <span class="shap-orig">${ov.toFixed(3)}</span>
+                <span class="shap-mod" style="color:${modColor}">${mv.toFixed(3)}</span>
+              </div>
+            </div>
+            <div class="shap-bar-bg" style="height:4px">
+              <div class="shap-bar-orig" style="width:0%" data-pct="${origPct}"></div>
+              <div class="shap-bar-mod" style="width:0%;background:${modColor}" data-pct="${modPct}"></div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FinGuard AI — Result</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0e1a;
+      --surface: #111827;
+      --border:  #1e2d40;
+      --accent:  #00d4aa;
+      --accent2: #0088ff;
+      --danger:  #ff4d6d;
+      --success: #00d4aa;
+      --text:    #e8edf5;
+      --muted:   #6b7a99;
+      --card:    #131c2e;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 { width: 500px; height: 500px; background: rgba(0,212,170,0.06); top: -100px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: rgba(0,136,255,0.05); bottom: 100px; left: -100px; }
+
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; }
+    .logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--accent); }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 7rem 2rem 4rem;
+    }
+
+    /* ── Decision Banner ── */
+    .decision-banner {
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .decision-banner.approved {
+      background: rgba(0,212,170,0.07);
+      border: 1px solid rgba(0,212,170,0.3);
+    }
+
+    .decision-banner.rejected {
+      background: rgba(255,77,109,0.07);
+      border: 1px solid rgba(255,77,109,0.3);
+    }
+
+    .decision-banner::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .decision-banner.approved::before { background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+    .decision-banner.rejected::before { background: linear-gradient(90deg, transparent, var(--danger), transparent); }
+
+    .decision-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .decision-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .decision-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .decision-text.approved { color: var(--success); }
+    .decision-text.rejected { color: var(--danger); }
+
+    .decision-sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+    }
+
+    /* ── Gauge ── */
+    .gauge-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .gauge-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .gauge {
+      position: relative;
+      width: 120px;
+      height: 70px;
+      overflow: visible;
+    }
+
+    .gauge svg { width: 120px; height: 70px; overflow: visible; }
+
+    .gauge-num {
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Syne', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .gauge-sub {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+      text-align: center;
+    }
+
+    /* ── Metrics Row ── */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+      animation: fadeUp 0.5s 0.1s ease both;
+    }
+
+    .metric-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+    }
+
+    .metric-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    /* ── Two col ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      animation: fadeUp 0.5s 0.2s ease both;
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 3px; height: 14px;
+      background: var(--accent);
+      border-radius: 999px;
+    }
+
+    /* ── SHAP bars ── */
+    .shap-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .shap-row { display: flex; flex-direction: column; gap: 0.25rem; }
+
+    .shap-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+
+    .shap-feature { color: var(--text); }
+
+    .shap-bar-bg {
+      height: 5px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .shap-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 1s ease;
+    }
+
+    .shap-bar-fill.positive { background: var(--accent); }
+    .shap-bar-fill.negative { background: var(--danger); }
+
+    /* ── Input summary ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .summary-item:last-child { border-bottom: none; }
+    .summary-key { color: var(--muted); }
+    .summary-val { color: var(--text); font-weight: 500; }
+
+    /* ── Actions ── */
+    .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      animation: fadeUp 0.5s 0.3s ease both;
+    }
+
+    .btn {
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.8rem 1.5rem;
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: opacity 0.2s, transform 0.2s;
+      display: inline-block;
+    }
+
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: #0a0e1a;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      .two-col { grid-template-columns: 1fr; }
+      .metrics-row { grid-template-columns: 1fr 1fr; }
+      .decision-top { flex-direction: column; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav>
+    <div class="logo">Fin<span>Guard</span> AI</div>
+    <div class="nav-links">
+      <a href="/">Apply</a>
+      <a href="/simulator">Simulator</a>
+      <a href="/dashboard">Dashboard</a>
+    </div>
+  </nav>
+
+  <div class="page" id="page">
+    <p style="color:var(--muted);font-size:0.8rem;">Loading result...</p>
+  </div>
+
+  <script>
+    const data = JSON.parse(sessionStorage.getItem('predictionResult') || 'null');
+
+    if (!data) {
+      window.location.href = '/';
+    } else {
+      renderResult(data);
+    }
+
+    function renderResult(d) {
+      const approved   = d.approved;
+      const riskScore  = d.risk_score;
+      const confidence = (d.confidence * 100).toFixed(1);
+      const threshold  = d.threshold_used;
+      const shap       = d.shap_data;
+      const summary    = d.input_summary || {};
+
+      // Gauge color
+      const gaugeColor = riskScore < 40 ? '#00d4aa' : riskScore < 70 ? '#f59e0b' : '#ff4d6d';
+      const angle      = (riskScore / 100) * 180;
+      const rad        = (angle - 180) * Math.PI / 180;
+      const nx         = 60 + 45 * Math.cos(rad);
+      const ny         = 60 + 45 * Math.sin(rad);
+
+      document.getElementById('page').innerHTML = `
+
+        <!-- Decision Banner -->
+        <div class="decision-banner ${approved ? 'approved' : 'rejected'}">
+          <div class="decision-top">
+            <div>
+              <div class="decision-label">Application Decision</div>
+              <div class="decision-text ${approved ? 'approved' : 'rejected'}">
+                ${approved ? '✅ Approved' : '❌ Rejected'}
+              </div>
+              <div class="decision-sub">
+                Confidence: ${confidence}% &nbsp;·&nbsp; Threshold: ${threshold}
+              </div>
+            </div>
+
+            <div class="gauge-wrap">
+              <div class="gauge-label">Risk Score</div>
+              <div class="gauge">
+                <svg viewBox="0 0 120 70">
+                  <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="#1e2d40" stroke-width="8" stroke-linecap="round"/>
+                  <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="${gaugeColor}"
+                    stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="${(riskScore/100)*157} 157"
+                    style="transition: stroke-dasharray 1.2s ease"/>
+                  <line x1="60" y1="60" x2="${nx}" y2="${ny}"
+                    stroke="${gaugeColor}" stroke-width="2.5" stroke-linecap="round"/>
+                  <circle cx="60" cy="60" r="4" fill="${gaugeColor}"/>
+                </svg>
+                <div class="gauge-num" style="color:${gaugeColor}">${riskScore}</div>
+              </div>
+              <div class="gauge-sub">out of 100</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <div class="metric-label">Confidence</div>
+            <div class="metric-value" style="color:var(--accent)">${confidence}%</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Risk Score</div>
+            <div class="metric-value" style="color:${gaugeColor}">${riskScore}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Decision Threshold</div>
+            <div class="metric-value" style="color:var(--accent2)">${threshold}</div>
+          </div>
+        </div>
+
+        <!-- Two Columns -->
+        <div class="two-col">
+
+          <!-- SHAP Panel -->
+          <div class="panel">
+            <div class="panel-title">Top Influencing Factors</div>
+            <div class="shap-list" id="shap-list"></div>
+          </div>
+
+          <!-- Input Summary -->
+          <div class="panel">
+            <div class="panel-title">Application Summary</div>
+            <div class="summary-grid">
+              ${Object.entries(summary).map(([k, v]) => `
+                <div class="summary-item">
+                  <span class="summary-key">${k.replace(/_/g,' ')}</span>
+                  <span class="summary-val">${v}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+          <a href="/" class="btn btn-primary">New Application</a>
+          <a href="/simulator" class="btn btn-outline">Try What-If Simulator</a>
+          <a href="/dashboard" class="btn btn-outline">View Dashboard</a>
+        </div>
+      `;
+
+      // Render SHAP bars
+      const maxShap = Math.max(...shap.shap_values.map(Math.abs));
+      const list    = document.getElementById('shap-list');
+
+      shap.features.forEach((feat, i) => {
+        const val     = shap.shap_values[i];
+        const raw     = shap.raw_values[i];
+        const impact  = shap.impacts[i];
+        const pct     = Math.abs(val) / maxShap * 100;
+
+        const row = document.createElement('div');
+        row.className = 'shap-row';
+        row.innerHTML = `
+          <div class="shap-meta">
+            <span class="shap-feature">${feat.replace(/_/g,' ')}</span>
+            <span style="color:${impact === 'positive' ? 'var(--accent)' : 'var(--danger)'}">
+              ${val > 0 ? '+' : ''}${val.toFixed(3)}
+            </span>
+          </div>
+          <div class="shap-bar-bg">
+            <div class="shap-bar-fill ${impact}" style="width:0%" data-pct="${pct}"></div>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      // Animate bars after render
+      setTimeout(() => {
+        document.querySelectorAll('.shap-bar-fill').forEach(el => {
+          el.style.width = el.dataset.pct + '%';
+        });
+      }, 100);
+    }
+  </script>
+
+</body>
+</html>

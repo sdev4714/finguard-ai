@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FinGuard AI — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0e1a;
+      --surface: #111827;
+      --border:  #1e2d40;
+      --accent:  #00d4aa;
+      --accent2: #0088ff;
+      --danger:  #ff4d6d;
+      --warn:    #f59e0b;
+      --text:    #e8edf5;
+      --muted:   #6b7a99;
+      --card:    #131c2e;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; }
+    .orb-1 { width: 500px; height: 500px; background: rgba(0,212,170,0.05); top: -100px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: rgba(0,136,255,0.04); bottom: 0; left: -100px; }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 1.2rem 2rem;
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; }
+    .logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--accent); }
+
+    .page {
+      position: relative; z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 7rem 2rem 4rem;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 2rem;
+      animation: fadeDown 0.5s ease both;
+    }
+
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem; font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .page-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; }
+
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.5rem 1rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── KPI Row ── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.5s 0.1s ease both;
+    }
+
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .kpi-card:hover { border-color: var(--accent); }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transform: scaleX(0);
+      transition: transform 0.3s;
+    }
+
+    .kpi-card:hover::after { transform: scaleX(1); }
+
+    .kpi-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .kpi-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem; font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-sub {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    /* ── Charts Row ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.5s 0.2s ease both;
+    }
+
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem; font-weight: 700;
+      margin-bottom: 1.2rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    .card-title::before {
+      content: '';
+      width: 3px; height: 14px;
+      background: var(--accent);
+      border-radius: 999px;
+    }
+
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* ── Metrics Table ── */
+    .metrics-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.5s 0.3s ease both;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .metric-item { text-align: center; }
+
+    .metric-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.4rem; font-weight: 700;
+      color: var(--accent);
+    }
+
+    .metric-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    .metric-bar-bg {
+      height: 3px;
+      background: var(--border);
+      border-radius: 999px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+
+    .metric-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 999px;
+      transition: width 1.2s ease;
+    }
+
+    /* ── Fairness Section ── */
+    .fairness-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.5s 0.4s ease both;
+    }
+
+    .fairness-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .fairness-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem;
+      transition: border-color 0.2s;
+    }
+
+    .fairness-item.fair    { border-color: rgba(0,212,170,0.3); }
+    .fairness-item.biased  { border-color: rgba(255,77,109,0.3); }
+
+    .fairness-attr {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem; font-weight: 700;
+      text-transform: capitalize;
+      margin-bottom: 0.8rem;
+    }
+
+    .fairness-verdict {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.68rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      margin-bottom: 0.8rem;
+    }
+
+    .fairness-verdict.fair   { background: rgba(0,212,170,0.1); color: var(--accent); }
+    .fairness-verdict.biased { background: rgba(255,77,109,0.1); color: var(--danger); }
+
+    .fairness-rates { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .rate-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+    }
+
+    .rate-group { color: var(--muted); }
+    .rate-val   { color: var(--text); font-weight: 500; }
+
+    .rate-bar-bg {
+      height: 3px;
+      background: var(--border);
+      border-radius: 999px;
+      margin-top: 0.2rem;
+      overflow: hidden;
+    }
+
+    .rate-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 1s ease;
+    }
+
+    /* ── Model Info ── */
+    .model-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      animation: fadeUp 0.5s 0.5s ease both;
+    }
+
+    .model-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .model-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .model-row:last-child { border-bottom: none; }
+    .model-key  { color: var(--muted); }
+    .model-val  { color: var(--text); }
+
+    /* ── Loading ── */
+    .loading-state {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 300px;
+      flex-direction: column;
+      gap: 1rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-16px);} to {opacity:1;transform:translateY(0);}}
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(16px); } to {opacity:1;transform:translateY(0);}}
+
+    @media (max-width: 900px) {
+      .kpi-row      { grid-template-columns: repeat(3, 1fr); }
+      .charts-row   { grid-template-columns: 1fr; }
+      .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+      .fairness-grid{ grid-template-columns: 1fr; }
+      .model-grid   { grid-template-columns: 1fr; }
+      .nav-links    { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <nav>
+    <div class="logo">Fin<span>Guard</span> AI</div>
+    <div class="nav-links">
+      <a href="/">Apply</a>
+      <a href="/simulator">Simulator</a>
+      <a href="/dashboard" class="active">Dashboard</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Model Dashboard</h1>
+        <p class="page-sub">Live performance metrics, risk distribution & fairness audit</p>
+      </div>
+      <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+    </div>
+
+    <div id="dashboard-content">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        Loading dashboard data...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let riskChart = null;
+    let approvalChart = null;
+
+    async function loadDashboard() {
+      try {
+        const res  = await fetch('/api/dashboard');
+        if (!res.ok) throw new Error('Failed to load dashboard');
+        const data = await res.json();
+        renderDashboard(data);
+      } catch (err) {
+        document.getElementById('dashboard-content').innerHTML = `
+          <div class="loading-state" style="color:var(--danger)">
+            Failed to load dashboard: ${err.message}
+          </div>
+        `;
+      }
+    }
+
+    function renderDashboard(d) {
+      const ov      = d.overview;
+      const metrics = d.metrics;
+      const risk    = d.risk_distribution;
+      const model   = d.model_info;
+      const fair    = d.fairness_summary;
+
+      document.getElementById('dashboard-content').innerHTML = `
+
+        <!-- KPI Row -->
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-label">Total Applications</div>
+            <div class="kpi-value" style="color:var(--accent)">${ov.total_applications.toLocaleString()}</div>
+            <div class="kpi-sub">test set</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Approval Rate</div>
+            <div class="kpi-value" style="color:var(--accent)">${(ov.approval_rate * 100).toFixed(1)}%</div>
+            <div class="kpi-sub">${ov.total_approved} approved</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Avg Risk Score</div>
+            <div class="kpi-value" style="color:${ov.avg_risk_score < 40 ? 'var(--accent)' : ov.avg_risk_score < 70 ? 'var(--warn)' : 'var(--danger)'}">${ov.avg_risk_score}</div>
+            <div class="kpi-sub">median: ${ov.median_risk_score}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">ROC-AUC</div>
+            <div class="kpi-value" style="color:var(--accent2)">${metrics.roc_auc}</div>
+            <div class="kpi-sub">discrimination</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">F1 Score</div>
+            <div class="kpi-value" style="color:var(--accent2)">${metrics.f1}</div>
+            <div class="kpi-sub">harmonic mean</div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row">
+          <div class="chart-card">
+            <div class="card-title">Risk Score Distribution</div>
+            <div class="chart-wrap">
+              <canvas id="riskChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="card-title">Approval vs Rejection</div>
+            <div class="chart-wrap">
+              <canvas id="approvalChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Model Metrics -->
+        <div class="metrics-card">
+          <div class="card-title">Model Performance Metrics</div>
+          <div class="metrics-grid" id="metrics-grid"></div>
+        </div>
+
+        <!-- Fairness Audit -->
+        <div class="fairness-card">
+          <div class="card-title">Fairness Audit</div>
+          <div class="fairness-grid" id="fairness-grid"></div>
+        </div>
+
+        <!-- Model Info -->
+        <div class="model-card">
+          <div class="card-title">Model Information</div>
+          <div class="model-grid" id="model-grid"></div>
+        </div>
+      `;
+
+      renderCharts(risk, ov);
+      renderMetrics(metrics);
+      renderFairness(fair);
+      renderModelInfo(model);
+    }
+
+    function renderCharts(risk, ov) {
+      const dist    = risk.distribution;
+      const labels  = Object.keys(dist).map(k => k.split(' ')[0].replace(/_/g,' '));
+      const values  = Object.values(dist);
+      const colors  = ['#00d4aa','#4ade80','#f59e0b','#fb923c','#ff4d6d'];
+
+      if (riskChart) riskChart.destroy();
+      riskChart = new Chart(document.getElementById('riskChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            backgroundColor: colors,
+            borderRadius: 6,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: '#1e2d40' }, ticks: { color: '#6b7a99', font: { family: 'DM Mono', size: 10 } } },
+            y: { grid: { color: '#1e2d40' }, ticks: { color: '#6b7a99', font: { family: 'DM Mono', size: 10 } } }
+          }
+        }
+      });
+
+      if (approvalChart) approvalChart.destroy();
+      approvalChart = new Chart(document.getElementById('approvalChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Approved', 'Rejected'],
+          datasets: [{
+            data: [ov.total_approved, ov.total_rejected],
+            backgroundColor: ['#00d4aa', '#ff4d6d'],
+            borderColor: '#131c2e',
+            borderWidth: 3,
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#6b7a99', font: { family: 'DM Mono', size: 11 }, padding: 16 }
+            }
+          }
+        }
+      });
+    }
+
+    function renderMetrics(metrics) {
+      const grid = document.getElementById('metrics-grid');
+      const items = [
+        { label: 'Accuracy',  val: metrics.accuracy  },
+        { label: 'F1 Score',  val: metrics.f1        },
+        { label: 'Precision', val: metrics.precision },
+        { label: 'Recall',    val: metrics.recall    },
+        { label: 'ROC-AUC',   val: metrics.roc_auc   },
+      ];
+
+      grid.innerHTML = items.map(item => `
+        <div class="metric-item">
+          <div class="metric-val">${(item.val * 100).toFixed(1)}%</div>
+          <div class="metric-label">${item.label}</div>
+          <div class="metric-bar-bg">
+            <div class="metric-bar-fill" style="width:0%" data-pct="${item.val * 100}"></div>
+          </div>
+        </div>
+      `).join('');
+
+      setTimeout(() => {
+        document.querySelectorAll('.metric-bar-fill').forEach(el => {
+          el.style.width = el.dataset.pct + '%';
+        });
+      }, 100);
+    }
+
+    function renderFairness(fairness) {
+      const grid = document.getElementById('fairness-grid');
+      if (!fairness || fairness.length === 0) {
+        grid.innerHTML = `<p style="color:var(--muted);font-size:0.75rem;grid-column:1/-1">No fairness data. Run src/fairness.py first.</p>`;
+        return;
+      }
+
+      grid.innerHTML = fairness.map(f => {
+        const isFair  = f.is_fair;
+        const rates   = f.approval_rates || {};
+        const maxRate = Math.max(...Object.values(rates));
+
+        const rateRows = Object.entries(rates).map(([group, rate]) => `
+          <div>
+            <div class="rate-row">
+              <span class="rate-group">${group}</span>
+              <span class="rate-val">${(rate * 100).toFixed(1)}%</span>
+            </div>
+            <div class="rate-bar-bg">
+              <div class="rate-bar-fill"
+                style="width:0%;background:${isFair ? 'var(--accent)' : 'var(--warn)'}"
+                data-pct="${(rate / maxRate) * 100}">
+              </div>
+            </div>
+          </div>
+        `).join('');
+
+        return `
+          <div class="fairness-item ${isFair ? 'fair' : 'biased'}">
+            <div class="fairness-attr">${f.attribute.replace(/_/g,' ')}</div>
+            <div class="fairness-verdict ${isFair ? 'fair' : 'biased'}">
+              ${f.verdict}
+            </div>
+            <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.6rem">
+              Disparity: ${(f.disparity * 100).toFixed(1)}%
+              &nbsp;·&nbsp; TPR Δ: ${(f.tpr_disparity * 100).toFixed(1)}%
+            </div>
+            <div class="fairness-rates">${rateRows}</div>
+          </div>
+        `;
+      }).join('');
+
+      setTimeout(() => {
+        document.querySelectorAll('.rate-bar-fill').forEach(el => {
+          el.style.width = el.dataset.pct + '%';
+        });
+      }, 100);
+    }
+
+    function renderModelInfo(model) {
+      const grid = document.getElementById('model-grid');
+      const items = [
+        ['Model Type',   model.model_type],
+        ['Version',      model.version],
+        ['Threshold',    model.threshold],
+        ['Features',     model.n_features],
+        ['Feature List', model.features.slice(0,6).join(', ') + '...'],
+      ];
+
+      grid.innerHTML = items.map(([k,v]) => `
+        <div class="model-row">
+          <span class="model-key">${k}</span>
+          <span class="model-val">${v}</span>
+        </div>
+      `).join('');
+    }
+
+    // Load on page open
+    loadDashboard();
+  </script>
+
+</body>
+</html>

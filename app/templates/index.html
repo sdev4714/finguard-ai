@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FinGuard AI — Loan Approval System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0e1a;
+      --surface:   #111827;
+      --border:    #1e2d40;
+      --accent:    #00d4aa;
+      --accent2:   #0088ff;
+      --danger:    #ff4d6d;
+      --text:      #e8edf5;
+      --muted:     #6b7a99;
+      --card:      #131c2e;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background grid ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Glow orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 { width: 500px; height: 500px; background: rgba(0,212,170,0.07); top: -100px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: rgba(0,136,255,0.06); bottom: 100px; left: -100px; }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.2rem;
+      letter-spacing: -0.02em;
+    }
+
+    .logo span { color: var(--accent); }
+
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 8rem 2rem 4rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0,212,170,0.1);
+      border: 1px solid rgba(0,212,170,0.3);
+      color: var(--accent);
+      padding: 0.4rem 1rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.5rem;
+      animation: fadeDown 0.6s 0.1s ease both;
+    }
+
+    h1 .highlight {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      max-width: 500px;
+      line-height: 1.8;
+      margin-bottom: 3rem;
+      animation: fadeDown 0.6s 0.2s ease both;
+    }
+
+    /* ── Form card ── */
+    .form-card {
+      position: relative;
+      z-index: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 780px;
+      margin: 0 auto;
+      animation: fadeUp 0.7s 0.3s ease both;
+    }
+
+    .form-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .form-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      color: var(--text);
+    }
+
+    .form-subtitle {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      letter-spacing: 0.05em;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group.half { grid-column: span 2; }
+
+    label {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    input, select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      padding: 0.65rem 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+      appearance: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.1);
+    }
+
+    select option { background: var(--surface); }
+
+    .range-group { grid-column: 1 / -1; }
+
+    .range-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+
+    .range-val {
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      height: 4px;
+      background: var(--border);
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    .submit-btn {
+      grid-column: 1 / -1;
+      margin-top: 0.5rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 10px;
+      color: #0a0e1a;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.9rem;
+      text-transform: uppercase;
+      transition: opacity 0.2s, transform 0.2s;
+      width: 100%;
+    }
+
+    .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .submit-btn:active { transform: translateY(0); }
+
+    .submit-btn.loading {
+      opacity: 0.7;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      padding: 3rem 2rem;
+      animation: fadeUp 0.7s 0.5s ease both;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── Error message ── */
+    .error-msg {
+      display: none;
+      background: rgba(255,77,109,0.1);
+      border: 1px solid rgba(255,77,109,0.3);
+      border-radius: 8px;
+      color: var(--danger);
+      font-size: 0.75rem;
+      grid-column: 1 / -1;
+      padding: 0.75rem 1rem;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(10,14,26,0.3);
+      border-top-color: #0a0e1a;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.4rem;
+    }
+
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr 1fr; }
+      .stats-bar { gap: 1.5rem; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <!-- Nav -->
+  <nav>
+    <div class="logo">Fin<span>Guard</span> AI</div>
+    <div class="nav-links">
+      <a href="/">Apply</a>
+      <a href="/simulator">Simulator</a>
+      <a href="/dashboard">Dashboard</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="badge">ML-Powered Credit Intelligence</div>
+
+    <h1>Instant Loan<br/><span class="highlight">Decision Engine</span></h1>
+
+    <p class="subtitle">
+      Real-time approval prediction powered by ensemble machine learning —
+      with full explainability, risk scoring, and fairness auditing.
+    </p>
+
+    <!-- Form -->
+    <div class="form-card">
+      <div class="form-title">Loan Application</div>
+      <div class="form-subtitle">All fields are required. Results in under 2 seconds.</div>
+
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label>Age</label>
+          <input type="number" id="age" min="18" max="75" placeholder="32" />
+        </div>
+
+        <div class="form-group">
+          <label>Gender</label>
+          <select id="gender">
+            <option value="">Select</option>
+            <option>Male</option>
+            <option>Female</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Education</label>
+          <select id="education">
+            <option value="">Select</option>
+            <option>Graduate</option>
+            <option>Not Graduate</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Employment</label>
+          <select id="employment_type">
+            <option value="">Select</option>
+            <option>Salaried</option>
+            <option>Self-Employed</option>
+            <option>Business</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Property Area</label>
+          <select id="property_area">
+            <option value="">Select</option>
+            <option>Urban</option>
+            <option>Semiurban</option>
+            <option>Rural</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Dependents</label>
+          <input type="number" id="dependents" min="0" max="10" placeholder="0" />
+        </div>
+
+        <div class="form-group">
+          <label>Monthly Income (₹)</label>
+          <input type="number" id="income" min="0" placeholder="75000" />
+        </div>
+
+        <div class="form-group">
+          <label>Co-Applicant Income (₹)</label>
+          <input type="number" id="co_applicant_income" min="0" placeholder="0" />
+        </div>
+
+        <div class="form-group">
+          <label>Loan Amount (₹)</label>
+          <input type="number" id="loan_amount" min="1000" placeholder="500000" />
+        </div>
+
+        <div class="form-group">
+          <label>Loan Term (months)</label>
+          <select id="loan_term">
+            <option value="">Select</option>
+            <option value="12">12</option>
+            <option value="24">24</option>
+            <option value="36">36</option>
+            <option value="60">60</option>
+            <option value="84">84</option>
+            <option value="120">120</option>
+            <option value="180">180</option>
+            <option value="240">240</option>
+            <option value="360">360</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Existing Loans</label>
+          <input type="number" id="existing_loans" min="0" max="10" placeholder="0" />
+        </div>
+
+        <!-- Credit Score Slider -->
+        <div class="form-group range-group">
+          <div class="range-header">
+            <label>Credit Score</label>
+            <span class="range-val" id="credit_score_val">650</span>
+          </div>
+          <input type="range" id="credit_score" min="300" max="900" value="650"
+            oninput="document.getElementById('credit_score_val').textContent = this.value"/>
+        </div>
+
+        <div class="error-msg" id="error-msg"></div>
+
+        <button class="submit-btn" id="submit-btn" onclick="submitApplication()">
+          Analyze Application →
+        </button>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-num">4</div>
+      <div class="stat-label">ML Models</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">18</div>
+      <div class="stat-label">Features</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">SHAP</div>
+      <div class="stat-label">Explainability</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">~98%</div>
+      <div class="stat-label">Accuracy</div>
+    </div>
+  </div>
+
+  <script>
+  async function submitApplication() {
+    const btn   = document.getElementById('submit-btn');
+    const errEl = document.getElementById('error-msg');
+    errEl.style.display = 'none';
+
+    const fields = {
+      age:                 parseInt(document.getElementById('age').value),
+      gender:              document.getElementById('gender').value,
+      education:           document.getElementById('education').value,
+      employment_type:     document.getElementById('employment_type').value,
+      income:              parseFloat(document.getElementById('income').value),
+      co_applicant_income: parseFloat(document.getElementById('co_applicant_income').value) || 0,
+      loan_amount:         parseFloat(document.getElementById('loan_amount').value),
+      loan_term:           parseInt(document.getElementById('loan_term').value),
+      credit_score:        parseInt(document.getElementById('credit_score').value),
+      existing_loans:      parseInt(document.getElementById('existing_loans').value) || 0,
+      property_area:       document.getElementById('property_area').value,
+      dependents:          parseInt(document.getElementById('dependents').value) || 0,
+    };
+
+    // Validate numeric fields
+    const numericFields = ['age', 'income', 'loan_amount', 'loan_term', 'credit_score'];
+    for (const key of numericFields) {
+      if (!fields[key] || isNaN(fields[key])) {
+        errEl.textContent = `Please fill in: ${key.replace(/_/g, ' ')}`;
+        errEl.style.display = 'block';
+        return;
+      }
+    }
+
+    // Validate select fields separately
+    const selectFields = ['gender', 'education', 'employment_type', 'property_area'];
+    for (const key of selectFields) {
+      if (!fields[key] || fields[key] === '') {
+        errEl.textContent = `Please select: ${key.replace(/_/g, ' ')}`;
+        errEl.style.display = 'block';
+        return;
+      }
+    }
+
+    btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+    btn.classList.add('loading');
+
+    try {
+      const res = await fetch('/api/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(JSON.stringify(err.detail) || 'Prediction failed');
+      }
+
+      const data = await res.json();
+      sessionStorage.setItem('predictionResult', JSON.stringify(data));
+      window.location.href = '/result';
+
+    } catch (err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      btn.innerHTML = 'Analyze Application →';
+      btn.classList.remove('loading');
+    }
+  }
+</script>
+
+</body>
+</html>
