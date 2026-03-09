@@ -17,7 +17,7 @@ def load_data(path=None):
 def handle_missing(df):
     for col in df.select_dtypes(include='number').columns:
         df[col] = df[col].fillna(df[col].median())
-    for col in df.select_dtypes(include='str').columns:
+    for col in df.select_dtypes(include='object').columns:
         df[col] = df[col].fillna(df[col].mode()[0])
     return df
 
