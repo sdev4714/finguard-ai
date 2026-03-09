@@ -570,11 +570,18 @@
         body: JSON.stringify(fields)
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(JSON.stringify(err.detail) || 'Prediction failed');
-      }
+      if (res.status === 503) {
+    errEl.textContent = "⏳ Model is still warming up. Please wait 2-3 minutes and try again.";
+    errEl.style.display = 'block';
+    btn.innerHTML = 'Analyze Application →';
+    btn.classList.remove('loading');
+    return;
+}
 
+if (!res.ok) {
+    const err = await res.json();
+    throw new Error(JSON.stringify(err.detail) || 'Prediction failed');
+}
       const data = await res.json();
       sessionStorage.setItem('predictionResult', JSON.stringify(data));
       window.location.href = '/result';

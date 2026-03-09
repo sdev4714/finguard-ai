@@ -16,10 +16,10 @@ def set_artifacts(data: dict):
     _artifacts.update(data)
 
 def get_artifacts() -> dict:
-    if not _artifacts:
+    if not _artifacts or "model" not in _artifacts:
         raise HTTPException(
             status_code=503,
-            detail="Model artifacts not loaded. Server may still be starting up."
+            detail="Model is still warming up. Please check /api/health and try again in a few minutes."
         )
     return _artifacts
 

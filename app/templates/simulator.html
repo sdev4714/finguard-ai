@@ -632,6 +632,10 @@
           body: JSON.stringify({ base_application: base, overrides })
         });
 
+        if (res.status === 503) {
+    panel.innerHTML = `<div class="placeholder"><div class="placeholder-text" style="color:var(--warn)">⏳ Model is still warming up. Please wait 2-3 minutes and try again.</div></div>`;
+    return;
+}
         if (!res.ok) {
           const err = await res.json();
           throw new Error(err.detail || 'Simulation failed');

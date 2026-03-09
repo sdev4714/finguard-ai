@@ -6,14 +6,22 @@ sys.path.insert(0, os.path.join(BASE_DIR, "src"))
 sys.path.insert(0, os.path.join(BASE_DIR, "app"))
 
 from fastapi import APIRouter, HTTPException
-from schemas import LoanApplication, PredictionResponse
-from dependencies import run_prediction
+from schemas import LoanApplication
+from dependencies import run_prediction, get_artifacts
 
 router = APIRouter()
 
 @router.post("/predict", response_model=None)
 async def predict(application: LoanApplication):
     try:
+        # Check if model is ready
+        artifacts = get_artifacts()
+        if "model" not in artifacts:
+            raise HTTPException(
+                status_code=503,
+                detail="Model is still warming up. Please check /api/health and try again in a few minutes."
+            )
+
         input_dict = {
             "age":                 application.age,
             "gender":              application.gender.value,
@@ -40,15 +48,17 @@ async def predict(application: LoanApplication):
             "top_factors":    result["top_factors"],
             "shap_data":      result["shap_data"],
             "input_summary": {
-                "age":            input_dict["age"],
-                "income":         input_dict["income"],
-                "loan_amount":    input_dict["loan_amount"],
-                "credit_score":   input_dict["credit_score"],
-                "employment":     input_dict["employment_type"],
-                "property_area":  input_dict["property_area"],
+                "age":           input_dict["age"],
+                "income":        input_dict["income"],
+                "loan_amount":   input_dict["loan_amount"],
+                "credit_score":  input_dict["credit_score"],
+                "employment":    input_dict["employment_type"],
+                "property_area": input_dict["property_area"],
             }
         }
 
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
