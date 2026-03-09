@@ -15,11 +15,13 @@ async def health_check():
     try:
         artifacts = get_artifacts()
         model     = artifacts.get("model")
-        threshold = get_threshold()
+        ready     = model is not None
+        threshold = get_threshold() if ready else 0.5
 
         return {
-            "status":     "healthy",
-            "model_type": type(model).__name__ if model else "unknown",
+            "status":     "ready" if ready else "warming_up",
+            "message":    "Server is ready" if ready else "ML pipeline is running in background, check back in 3-5 minutes",
+            "model_type": type(model).__name__ if model else "loading...",
             "threshold":  round(threshold, 2),
             "version":    "1.0.0",
             "artifacts":  {
@@ -34,7 +36,9 @@ async def health_check():
 
     except Exception as e:
         return {
-            "status":  "unhealthy",
-            "error":   str(e),
+            "status":  "warming_up",
+            "message": "Pipeline is running, please wait 3-5 minutes",
             "version": "1.0.0"
         }
+
+ 

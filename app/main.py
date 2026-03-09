@@ -1,6 +1,7 @@
 import os
 import sys
 import pickle
+import threading
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE_DIR, "src"))
@@ -26,7 +27,7 @@ def run_pipeline_if_needed():
         print("✅ Models already exist, skipping pipeline")
         return
 
-    print("🔄 Models not found — running ML pipeline...")
+    print("🔄 Models not found — running ML pipeline in background...")
     import subprocess
 
     scripts = [
@@ -42,18 +43,26 @@ def run_pipeline_if_needed():
         print(f"  Running {os.path.basename(script)}...")
         result = subprocess.run(
             ["python", script],
-            capture_output=False,
             text=True,
             cwd=BASE_DIR
         )
         if result.returncode != 0:
-            raise RuntimeError(f"Pipeline failed at {script}")
+            print(f"❌ Pipeline failed at {script}")
+            return
         print(f"  ✅ {os.path.basename(script)} done")
 
-    print("✅ Pipeline complete")
+    print("✅ Pipeline complete — loading artifacts now...")
+    load_artifacts()
+    set_artifacts(artifacts)
+    print("✅ Artifacts hot-loaded into server")
 
 def load_artifacts():
     models_dir = os.path.join(BASE_DIR, "models")
+    model_path = os.path.join(models_dir, "loan_model.pkl")
+
+    if not os.path.exists(model_path):
+        print("⚠️  Models not ready yet, skipping artifact load")
+        return
 
     with open(os.path.join(models_dir, "loan_model.pkl"), "rb") as f:
         artifacts["model"] = pickle.load(f)
@@ -84,9 +93,16 @@ def load_artifacts():
     
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    run_pipeline_if_needed()
+    # Try loading existing artifacts first
     load_artifacts()
     set_artifacts(artifacts)
+
+    # If models missing, run pipeline in background thread
+    if "model" not in artifacts:
+        thread = threading.Thread(target=run_pipeline_if_needed, daemon=True)
+        thread.start()
+        print("🔄 Pipeline running in background — server starting now")
+
     yield
     artifacts.clear()
     print("Artifacts cleared on shutdown")
