@@ -18,6 +18,40 @@ BaseModel.model_config = {"protected_namespaces": ()}     # only import what exi
 
 artifacts = {}
 
+def run_pipeline_if_needed():
+    models_dir = os.path.join(BASE_DIR, "models")
+    model_path = os.path.join(models_dir, "loan_model.pkl")
+
+    if os.path.exists(model_path):
+        print("✅ Models already exist, skipping pipeline")
+        return
+
+    print("🔄 Models not found — running ML pipeline...")
+    import subprocess
+
+    scripts = [
+        os.path.join(BASE_DIR, "data", "generate_data.py"),
+        os.path.join(BASE_DIR, "src", "preprocess.py"),
+        os.path.join(BASE_DIR, "src", "train.py"),
+        os.path.join(BASE_DIR, "src", "evaluate.py"),
+        os.path.join(BASE_DIR, "src", "explain.py"),
+        os.path.join(BASE_DIR, "src", "fairness.py"),
+    ]
+
+    for script in scripts:
+        print(f"  Running {os.path.basename(script)}...")
+        result = subprocess.run(
+            ["python", script],
+            capture_output=False,
+            text=True,
+            cwd=BASE_DIR
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Pipeline failed at {script}")
+        print(f"  ✅ {os.path.basename(script)} done")
+
+    print("✅ Pipeline complete")
+
 def load_artifacts():
     models_dir = os.path.join(BASE_DIR, "models")
 
@@ -47,9 +81,10 @@ def load_artifacts():
     print("✅ All artifacts loaded successfully")
     print(f"   Model    : {type(artifacts['model']).__name__}")
     print(f"   Threshold: {artifacts['threshold']:.2f}")
-
+    
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    run_pipeline_if_needed()
     load_artifacts()
     set_artifacts(artifacts)
     yield
