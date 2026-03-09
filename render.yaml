@@ -4,17 +4,8 @@ services:
     runtime: python
     region: singapore
     plan: free
-    buildCommand: |
-      pip install --upgrade pip
-      pip install numpy==1.26.4
-      pip install -r requirements.txt
-      cd /opt/render/project/src && python data/generate_data.py
-      cd /opt/render/project/src && python src/preprocess.py
-      cd /opt/render/project/src && python src/train.py
-      cd /opt/render/project/src && python src/evaluate.py
-      cd /opt/render/project/src && python src/explain.py
-      cd /opt/render/project/src && python src/fairness.py
-    startCommand: bash -c "cd /opt/render/project/src && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+    buildCommand: bash build.sh
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DEBUG
         value: false
