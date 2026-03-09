@@ -1,5 +1,8 @@
 import pandas as pd
 import numpy as np
+import os
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 np.random.seed(42)
 
@@ -17,7 +20,6 @@ def generate_loan_dataset(n=5000):
     property_area = np.random.choice(['Urban', 'Semiurban', 'Rural'], n, p=[0.4, 0.35, 0.25])
     dependents = np.random.randint(0, 5, n)
 
-    # Approval logic (realistic, not random)
     score = (
         (credit_score > 700).astype(int) * 3 +
         (income > 60000).astype(int) * 2 +
@@ -51,8 +53,10 @@ def generate_loan_dataset(n=5000):
     return df
 
 if __name__ == "__main__":
+    raw_dir = os.path.join(BASE_DIR, "data", "raw")
+    os.makedirs(raw_dir, exist_ok=True)
+
     df = generate_loan_dataset(5000)
-    df.to_csv("data/raw/loan_data.csv", index=False)
+    df.to_csv(os.path.join(raw_dir, "loan_data.csv"), index=False)
     print(f"Dataset generated: {df.shape}")
     print(df['approved'].value_counts())
-    print(df.head())
