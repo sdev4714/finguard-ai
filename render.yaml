@@ -14,7 +14,7 @@ services:
       cd /opt/render/project/src && python src/evaluate.py
       cd /opt/render/project/src && python src/explain.py
       cd /opt/render/project/src && python src/fairness.py
-    startCommand: cd /opt/render/project/src && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: bash -c "cd /opt/render/project/src && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
     envVars:
       - key: DEBUG
         value: false
