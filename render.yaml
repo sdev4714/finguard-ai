@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: finguard-ai
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: |
+      pip install -r requirements.txt
+      python data/generate_data.py
+      python src/preprocess.py
+      python src/train.py
+      python src/evaluate.py
+      python src/explain.py
+      python src/fairness.py
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DEBUG
+        value: false
